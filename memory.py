@@ -1,43 +1,52 @@
-# Development branch
-# Версия 1.1 - добавлена система памяти AI менеджера
-import json
-import os
+from database import save_message, load_messages
 
-HISTORY_FILE = "history.json"
 
-conversation = []
+current_client = None
+
+
+def set_client(client_id):
+
+    global current_client
+
+    current_client = client_id
 
 
 def load_history():
-    global conversation
 
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r", encoding="utf-8") as file:
-            conversation = json.load(file)
-    else:
-        conversation = []
+    if current_client is None:
+        raise ValueError("Клиент не выбран")
+
+    return load_messages(current_client)
 
 
-def save_history():
-    with open(HISTORY_FILE, "w", encoding="utf-8") as file:
-        json.dump(conversation, file, ensure_ascii=False, indent=4)
+def add_message(role, text):
+
+    if current_client is None:
+        raise ValueError("Клиент не выбран")
+
+    save_message(
+        current_client,
+        role,
+        text
+    )
 
 
-def add_message(role: str, text: str):
-    conversation.append({
-        "role": role,
-        "text": text
-    })
+def build_prompt(system_prompt):
 
-    save_history()
+    if current_client is None:
+        raise ValueError("Клиент не выбран")
 
+    prompt = system_prompt.strip()
 
-def build_prompt(system_prompt: str) -> str:
-    prompt = system_prompt + "\n\n"
+    prompt += "\n\nИстория общения:\n"
 
-    for message in conversation:
-        prompt += f"{message['role']}: {message['text']}\n"
+    history = load_messages(
+        current_client,
+        limit=20
+    )
 
-    prompt += "Менеджер:"
+    for role, text, created_at in history:
+
+        prompt += f"{role}: {text}\n"
 
     return prompt

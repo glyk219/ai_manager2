@@ -1,28 +1,70 @@
 import requests
 
+
 URL = "http://localhost:11434/api/generate"
 
-def ask_ai(prompt: str) -> str:
-    print("Отправляем запрос в Ollama...")
+MODEL = "qwen2.5:1.5b"
 
-    response = requests.post(
-        URL,
-        json={
-            "model": "qwen2.5:1.5b",
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "num_predict": 100
-            }
-        },
-        timeout=120
+
+def ask_ai(prompt: str) -> str:
+
+    print("\nОтправляем запрос в Ollama...")
+
+    try:
+
+        response = requests.post(
+            URL,
+            json={
+                "model": MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "num_predict": 100
+                }
+            },
+            timeout=120
+        )
+
+    except requests.exceptions.ConnectionError:
+
+        return (
+            "Ошибка: Ollama не запущена. "
+            "Запустите Ollama и попробуйте снова."
+        )
+
+    except requests.exceptions.Timeout:
+
+        return (
+            "Ошибка: Ollama слишком долго "
+            "не отвечает."
+        )
+
+    print(
+        "HTTP статус:",
+        response.status_code
     )
 
-    print("HTTP статус:", response.status_code)
+    if response.status_code != 200:
 
-    result = response.json()
+        return (
+            f"Ошибка Ollama: "
+            f"HTTP {response.status_code}"
+        )
 
-    print("Ответ JSON:")
-    print(result)
+    try:
 
-    return result["response"]
+        result = response.json()
+
+    except ValueError:
+
+        return "Ошибка: Ollama вернула неправильный JSON."
+
+    if "response" not in result:
+
+        print("Ответ Ollama:")
+
+        print(result)
+
+        return "Ошибка: в ответе Ollama нет поля response."
+
+    return result["response"].strip()
